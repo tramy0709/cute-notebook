@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Ghi chú</title>
+<title>Notebook</title>
 
 <style>
 body {
@@ -14,9 +14,9 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
+    font-family: Arial, sans-serif;
 }
 
-/* khung gỗ */
 .frame {
     width: 95%;
     max-width: 500px;
@@ -27,49 +27,63 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* title */
 h2 {
     text-align: center;
-    font-family: serif;
+    color: #4a3420;
+    margin-top: 0;
 }
 
-/* textarea kiểu giấy dòng */
 textarea {
     width: 100%;
     height: 220px;
-    border: none;
+    border: 2px solid #d2a679;
+    border-radius: 5px;
     padding: 10px;
     font-size: 16px;
-    font-family: serif;
-    background: repeating-linear-gradient(
-        to bottom,
-        #fdf6e3,
-        #fdf6e3 28px,
-        #d8c9a6 29px
-    );
+    background: #fffaf0;
     outline: none;
+    box-sizing: border-box;
+    resize: none;
 }
 
-/* buttons */
 .actions {
     display: flex;
-    justify-content: space-between;
+    gap: 10px;
     margin-top: 15px;
 }
 
-.btn {
+button {
     flex: 1;
-    margin: 5px;
-    padding: 10px;
+    padding: 12px;
     border: none;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #d2a679;
-    font-family: serif;
+    color: white;
+    font-weight: bold;
     cursor: pointer;
+    transition: background 0.3s;
 }
 
-.btn:hover {
-    background: #b88c5a;
+button:hover {
+    background: #bc8f62;
+}
+
+.exit-btn {
+    background: #a67c52;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    border-radius: 10px;
+}
+
+#status {
+    font-size: 12px;
+    color: #7a5a3a;
+    text-align: right;
+    height: 15px;
+    margin-top: 5px;
 }
 </style>
 </head>
@@ -77,26 +91,32 @@ textarea {
 <body>
 
 <div class="frame">
-
-    <h2>📜 Ghi Chú Của Tớ 📜 </br>
+    <h2>📜 Ghi Chú Của Tớ 📜<br>
         🌸🌺🌻🌼🌷🌹
     </h2>
+    
+    <textarea id="note">{{ note }}</textarea>
+    <div id="status"></div>
+    
+    <div class="actions">
+        <button type="button" id="undoBtn">⏪ Undo</button>
+        <button type="button" id="redoBtn">⏩ Redo</button>
+        <a href="/" class="exit-btn">
+            <button type="button" style="background:transparent; width: 100%;">↩️ Thoát</button>
+        </a>
+    </div>
 
-<textarea id="note">{{ note }}</textarea>
-
-<div class="actions">
-    <a href="/">
-        <button class="btn">↩️ Thoát</button>
-    </a>
 </div>
 
 <script>
 let timeout = null;
-
 const textarea = document.getElementById("note");
+const statusDiv = document.getElementById("status");
 
+// ================= AUTO SAVE =================
 textarea.addEventListener("input", function() {
     clearTimeout(timeout);
+    statusDiv.innerText = "Đang gõ...";
 
     timeout = setTimeout(() => {
         fetch("/save", {
@@ -107,12 +127,40 @@ textarea.addEventListener("input", function() {
             body: JSON.stringify({
                 content: textarea.value
             })
+        })
+        .then(() => {
+            statusDiv.innerText = "Đã lưu tự động";
+            setTimeout(() => { statusDiv.innerText = ""; }, 2000);
         });
-    }, 500); // delay 0.5s để tránh spam request
+    }, 800); // Lưu sau 0.8 giây khi ngừng gõ
+});
+
+
+// ================= UNDO =================
+document.getElementById("undoBtn").addEventListener("click", function() {
+    fetch("/undo", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        textarea.value = data.content;
+        statusDiv.innerText = "Đã Undo";
+    });
+});
+
+
+// ================= REDO =================
+document.getElementById("redoBtn").addEventListener("click", function() {
+    fetch("/redo", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        textarea.value = data.content;
+        statusDiv.innerText = "Đã Redo";
+    });
 });
 </script>
-
-</div>
 
 </body>
 </html>

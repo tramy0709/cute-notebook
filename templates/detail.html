@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Ghi chú</title>
+
+<style>
+body {
+    margin: 0;
+    background: #5e4630;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* khung gỗ */
+.frame {
+    width: 95%;
+    max-width: 500px;
+    background: #f4e6c8;
+    border: 12px solid #7a5a3a;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* title */
+h2 {
+    text-align: center;
+    font-family: serif;
+}
+
+/* textarea kiểu giấy dòng */
+textarea {
+    width: 100%;
+    height: 220px;
+    border: none;
+    padding: 10px;
+    font-size: 16px;
+    font-family: serif;
+    background: repeating-linear-gradient(
+        to bottom,
+        #fdf6e3,
+        #fdf6e3 28px,
+        #d8c9a6 29px
+    );
+    outline: none;
+}
+
+/* buttons */
+.actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.btn {
+    flex: 1;
+    margin: 5px;
+    padding: 10px;
+    border: none;
+    border-radius: 12px;
+    background: #d2a679;
+    font-family: serif;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #b88c5a;
+}
+</style>
+</head>
+
+<body>
+
+<div class="frame">
+
+    <h2>📜 Ghi Chú Của Tớ 📜 </br>
+        🌸🌺🌻🌼🌷🌹
+    </h2>
+
+<textarea id="note">{{ note }}</textarea>
+
+<div class="actions">
+    <a href="/">
+        <button class="btn">↩️ Thoát</button>
+    </a>
+</div>
+
+<script>
+let timeout = null;
+
+const textarea = document.getElementById("note");
+
+textarea.addEventListener("input", function() {
+    clearTimeout(timeout);
+
+    timeout = setTimeout(() => {
+        fetch("/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                content: textarea.value
+            })
+        });
+    }, 500); // delay 0.5s để tránh spam request
+});
+</script>
+
+</div>
+
+</body>
+</html>

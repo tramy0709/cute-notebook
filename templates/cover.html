@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+
+    <!-- QUAN TRỌNG cho mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sổ Ghi Chú</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #f5efe6;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* container để center trên desktop */
+        .wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .cover {
+            width: 100%;
+            max-width: 390px; /* iPhone size */
+            height: 100vh;
+            max-height: 700px;
+
+            background: url("/static/cover.png") no-repeat center/cover;
+
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* MOBILE FULL SCREEN */
+        @media (max-width: 480px) {
+            .wrapper {
+                height: auto;
+            }
+
+            .cover {
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+
+        .overlay {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+
+            background: linear-gradient(
+                to top,
+                rgba(255,255,255,0.85),
+                rgba(255,255,255,0)
+            );
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: #d8a7b1;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #c48b96;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="wrapper">
+    <div class="cover">
+        <div class="overlay">
+           <a href="/note">
+    <button class="btn">📖 Mở sổ</button>
+</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

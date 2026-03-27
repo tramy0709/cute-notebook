@@ -3,164 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Notebook</title>
-
 <style>
-body {
-    margin: 0;
-    background: #5e4630;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: Arial, sans-serif;
-}
-
-.frame {
-    width: 95%;
-    max-width: 500px;
-    background: #f4e6c8;
-    border: 12px solid #7a5a3a;
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-h2 {
-    text-align: center;
-    color: #4a3420;
-    margin-top: 0;
-}
-
-textarea {
-    width: 100%;
-    height: 220px;
-    border: 2px solid #d2a679;
-    border-radius: 5px;
-    padding: 10px;
-    font-size: 16px;
-    background: #fffaf0;
-    outline: none;
-    box-sizing: border-box;
-    resize: none;
-}
-
-.actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    background: #d2a679;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-button:hover {
-    background: #bc8f62;
-}
-
-.exit-btn {
-    background: #a67c52;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    border-radius: 10px;
-}
-
-#status {
-    font-size: 12px;
-    color: #7a5a3a;
-    text-align: right;
-    height: 15px;
-    margin-top: 5px;
-}
+    body { margin: 0; background: #5e4630; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif; }
+    .frame { width: 95%; max-width: 500px; background: #f4e6c8; border: 12px solid #7a5a3a; border-radius: 15px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h2 { text-align: center; color: #4a3420; margin-top: 0; }
+    textarea { width: 100%; height: 220px; border: 2px solid #d2a679; border-radius: 5px; padding: 10px; font-size: 16px; background: #fffaf0; outline: none; box-sizing: border-box; resize: none; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #d2a679; color: white; font-weight: bold; cursor: pointer; }
+    button:hover { background: #bc8f62; }
+    .nav-btn { background: #a67c52; text-decoration: none; border-radius: 10px; display: block; overflow: hidden; }
+    #status { font-size: 12px; color: #7a5a3a; text-align: right; height: 15px; margin-top: 5px; }
 </style>
 </head>
-
 <body>
-
 <div class="frame">
-    <h2>📜 Ghi Chú Của Tớ 📜<br>
-        🌸🌺🌻🌼🌷🌹
-    </h2>
-    
+    <h2>📜 Ghi Chú Của Tớ 📜<br>🌸🌺🌻🌼🌷🌹</h2>
     <textarea id="note">{{ note }}</textarea>
     <div id="status"></div>
-    
     <div class="actions">
         <button type="button" id="undoBtn">⏪ Undo</button>
         <button type="button" id="redoBtn">⏩ Redo</button>
-        <a href="/" class="exit-btn">
-            <button type="button" style="background:transparent; width: 100%;">↩️ Thoát</button>
-        </a>
+        <a href="/schedule" class="nav-btn"><button type="button" style="background:transparent;">📅 Lịch Hẹn</button></a>
+        <a href="/" class="nav-btn"><button type="button" style="background:transparent;">↩️ Thoát</button></a>
     </div>
-
 </div>
-
 <script>
-let timeout = null;
-const textarea = document.getElementById("note");
-const statusDiv = document.getElementById("status");
+    let timeout = null;
+    const textarea = document.getElementById("note");
+    const statusDiv = document.getElementById("status");
 
-// ================= AUTO SAVE =================
-textarea.addEventListener("input", function() {
-    clearTimeout(timeout);
-    statusDiv.innerText = "Đang gõ...";
+    textarea.addEventListener("input", () => {
+        clearTimeout(timeout);
+        statusDiv.innerText = "Đang gõ...";
+        timeout = setTimeout(() => {
+            fetch("/save", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ content: textarea.value })
+            }).then(() => {
+                statusDiv.innerText = "Đã lưu tự động";
+                setTimeout(() => { statusDiv.innerText = ""; }, 2000);
+            });
+        }, 800);
+    });
 
-    timeout = setTimeout(() => {
-        fetch("/save", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                content: textarea.value
-            })
-        })
-        .then(() => {
-            statusDiv.innerText = "Đã lưu tự động";
-            setTimeout(() => { statusDiv.innerText = ""; }, 2000);
+    document.getElementById("undoBtn").addEventListener("click", () => {
+        fetch("/undo", { method: "POST" }).then(res => res.json()).then(data => {
+            textarea.value = data.content;
         });
-    }, 800); // Lưu sau 0.8 giây khi ngừng gõ
-});
-
-
-// ================= UNDO =================
-document.getElementById("undoBtn").addEventListener("click", function() {
-    fetch("/undo", {
-        method: "POST"
-    })
-    .then(res => res.json())
-    .then(data => {
-        textarea.value = data.content;
-        statusDiv.innerText = "Đã Undo";
     });
-});
 
-
-// ================= REDO =================
-document.getElementById("redoBtn").addEventListener("click", function() {
-    fetch("/redo", {
-        method: "POST"
-    })
-    .then(res => res.json())
-    .then(data => {
-        textarea.value = data.content;
-        statusDiv.innerText = "Đã Redo";
+    document.getElementById("redoBtn").addEventListener("click", () => {
+        fetch("/redo", { method: "POST" }).then(res => res.json()).then(data => {
+            textarea.value = data.content;
+        });
     });
-});
 </script>
-
 </body>
 </html>

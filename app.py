@@ -2,157 +2,126 @@ from flask import Flask, render_template, request, jsonify
 import sqlite3
 
 app = Flask(__name__)
-
 DB_NAME = "note.db"
 
-# ================== INIT DB ==================
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_db_connection()
     cursor = conn.cursor()
-
-    # Bảng note chính
+    cursor.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, content TEXT)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS redo (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT)")
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS notes (
-        id INTEGER PRIMARY KEY,
-        content TEXT
-    )
-    """)
-
-    # Bảng history (để undo)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS history (
+    CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT
+        date TEXT,
+        time TEXT,
+        task TEXT
     )
     """)
-
-    # Bảng redo (để redo) - MỚI
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS redo (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT
-    )
-    """)
-
-    # Tạo note mặc định nếu chưa có
     cursor.execute("SELECT * FROM notes WHERE id=1")
     if cursor.fetchone() is None:
         cursor.execute("INSERT INTO notes (id, content) VALUES (1, '')")
-        # Lưu bản ghi đầu tiên vào history để có mốc undo
         cursor.execute("INSERT INTO history (content) VALUES ('')")
-
     conn.commit()
     conn.close()
 
-
-# ================== GET NOTE ==================
-def get_note():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT content FROM notes WHERE id=1")
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else ""
-
-
-# ================== ROUTES ==================
+# ================== ROUTES CỦA TRAMY ==================
 
 @app.route('/')
 def home():
+    # SỬA LỖI: Trả về trang bìa trước tiên
     return render_template('cover.html')
-
 
 @app.route('/note')
 def note():
-    note_content = get_note()
+    conn = get_db_connection()
+    result = conn.execute("SELECT content FROM notes WHERE id=1").fetchone()
+    conn.close()
+    note_content = result['content'] if result else ""
     return render_template('detail.html', note=note_content)
 
-
-# AUTO SAVE
 @app.route('/save', methods=['POST'])
 def auto_save():
     data = request.json
     content = data.get("content", "")
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    # Khi có thay đổi mới, các hành động Redo cũ không còn giá trị -> Xóa Redo
-    cursor.execute("DELETE FROM redo")
-    
-    # Lưu vào history
-    cursor.execute("INSERT INTO history (content) VALUES (?)", (content,))
-    
-    # Update note hiện tại
-    cursor.execute("UPDATE notes SET content=? WHERE id=1", (content,))
-
+    conn = get_db_connection()
+    conn.execute("DELETE FROM redo")
+    conn.execute("INSERT INTO history (content) VALUES (?)", (content,))
+    conn.execute("UPDATE notes SET content=? WHERE id=1", (content,))
     conn.commit()
     conn.close()
     return jsonify({"status": "saved"})
 
-
-# UNDO
 @app.route('/undo', methods=['POST'])
 def undo():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    # Lấy 2 bản ghi gần nhất từ history (hiện tại và trước đó)
-    cursor.execute("SELECT id, content FROM history ORDER BY id DESC LIMIT 2")
-    rows = cursor.fetchall()
-
+    conn = get_db_connection()
+    rows = conn.execute("SELECT id, content FROM history ORDER BY id DESC LIMIT 2").fetchall()
     if len(rows) < 2:
         conn.close()
-        return jsonify({"content": rows[0][1] if rows else ""})
-
-    current_id = rows[0][0]
-    current_content = rows[0][1]
-    previous_content = rows[1][1]
-
-    # Đưa nội dung hiện tại vào Redo
-    cursor.execute("INSERT INTO redo (content) VALUES (?)", (current_content,))
+        return jsonify({"content": rows[0]['content'] if rows else ""})
     
-    # Xóa nội dung hiện tại khỏi history
-    cursor.execute("DELETE FROM history WHERE id=?", (current_id,))
+    current_id, current_content = rows[0]['id'], rows[0]['content']
+    previous_content = rows[1]['content']
     
-    # Cập nhật note chính về bản ghi cũ hơn
-    cursor.execute("UPDATE notes SET content=? WHERE id=1", (previous_content,))
-    
+    conn.execute("INSERT INTO redo (content) VALUES (?)", (current_content,))
+    conn.execute("DELETE FROM history WHERE id=?", (current_id,))
+    conn.execute("UPDATE notes SET content=? WHERE id=1", (previous_content,))
     conn.commit()
     conn.close()
     return jsonify({"content": previous_content})
 
-
-# REDO
 @app.route('/redo', methods=['POST'])
 def redo():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    # Lấy bản ghi cuối cùng trong bảng Redo
-    cursor.execute("SELECT id, content FROM redo ORDER BY id DESC LIMIT 1")
-    row = cursor.fetchone()
-
+    conn = get_db_connection()
+    row = conn.execute("SELECT id, content FROM redo ORDER BY id DESC LIMIT 1").fetchone()
     if row:
-        redo_id = row[0]
-        redo_content = row[1]
-
-        # Đưa nội dung này quay lại history
-        cursor.execute("INSERT INTO history (content) VALUES (?)", (redo_content,))
-        
-        # Cập nhật vào note chính
-        cursor.execute("UPDATE notes SET content=? WHERE id=1", (redo_content,))
-        
-        # Xóa khỏi bảng redo
-        cursor.execute("DELETE FROM redo WHERE id=?", (redo_id,))
-        
+        conn.execute("INSERT INTO history (content) VALUES (?)", (row['content'],))
+        conn.execute("UPDATE notes SET content=? WHERE id=1", (row['content'],))
+        conn.execute("DELETE FROM redo WHERE id=?", (row['id'],))
         conn.commit()
         conn.close()
-        return jsonify({"content": redo_content})
-
+        return jsonify({"content": row['content']})
     conn.close()
-    return jsonify({"content": get_note()})
+    return jsonify({"content": ""})
 
+# ================== PHẦN LỊCH HẸN ==================
+
+@app.route('/schedule')
+def schedule():
+    conn = get_db_connection()
+    # Sắp xếp theo ngày tăng dần
+    items = conn.execute("SELECT * FROM appointments ORDER BY date ASC, time ASC").fetchall()
+    conn.close()
+    return render_template('schedule.html', appointments=items)
+
+@app.route('/add_schedule', methods=['POST'])
+def add_schedule():
+    data = request.json
+    date = data.get("date")
+    time = data.get("time")
+    task = data.get("task", "") 
+
+    if not date or not time:
+        return jsonify({"status": "error", "message": "Thiếu ngày hoặc giờ"}), 400
+
+    conn = get_db_connection()
+    conn.execute("INSERT INTO appointments (date, time, task) VALUES (?, ?, ?)", (date, time, task))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success"})
+
+@app.route('/delete_schedule/<int:id>', methods=['DELETE'])
+def delete_schedule(id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM appointments WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "deleted"})
 
 if __name__ == '__main__':
     init_db()

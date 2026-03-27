@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Hẹn Của Tramy</title>
+    <style>
+        /* Phong cách Vintage & Hoa nhí */
+        body { 
+            margin: 0; 
+            background: #fdf5e6; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            font-family: 'Palatino', 'Georgia', serif; 
+        }
+        
+        .container { 
+            width: 90%; 
+            max-width: 400px; 
+            background: #fffaf0; 
+            border: 8px double #d4a373; 
+            border-radius: 20px; 
+            padding: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            /* Họa tiết hoa nhí chìm */
+            background-image: radial-gradient(#ffb7c5 15%, transparent 16%), radial-gradient(#ffb7c5 15%, transparent 16%);
+            background-position: 0 0, 20px 20px; 
+            background-size: 40px 40px;
+        }
+
+        .inner { 
+            background: rgba(255, 255, 255, 0.9); 
+            padding: 20px; 
+            border-radius: 15px; 
+            border: 1px solid #faebd7;
+        }
+
+        h2 { 
+            text-align: center; 
+            color: #6b4e31; 
+            margin-top: 0; 
+            font-size: 1.4em;
+        }
+
+        .form { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            margin-bottom: 20px; 
+        }
+
+        label {
+            font-size: 0.9em;
+            color: #8b5a2b;
+            margin-bottom: -8px;
+            font-weight: bold;
+        }
+
+        input { 
+            padding: 12px; 
+            border: 1px solid #d4a373; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            outline: none;
+            background: #fff;
+        }
+
+        input:focus {
+            border-color: #bc8f62;
+            box-shadow: 0 0 5px rgba(212, 163, 115, 0.3);
+        }
+
+        .btn-add { 
+            background: #d4a373; 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: background 0.3s;
+        }
+
+        .btn-add:hover { 
+            background: #bc8f62; 
+        }
+
+        .list { 
+            max-height: 250px; 
+            overflow-y: auto; 
+            border-top: 2px dashed #d4a373; 
+            padding-top: 15px; 
+        }
+
+        .item { 
+            background: white; 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin-bottom: 10px; 
+            font-size: 13px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-left: 5px solid #ffb7c5; 
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .item-info b { color: #d4a373; }
+        .item-info span { color: #5d4037; display: block; margin-top: 4px; }
+
+        .btn-del { 
+            color: #ff6b6b; 
+            border: none; 
+            background: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 18px;
+            padding: 5px;
+        }
+
+        .btn-del:hover { color: #e57373; }
+
+        .back-link { 
+            display: block; 
+            text-align: center; 
+            margin-top: 20px; 
+            color: #8b5a2b; 
+            text-decoration: none; 
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .back-link:hover { text-decoration: underline; }
+
+        /* Tùy chỉnh thanh cuộn cho xinh */
+        .list::-webkit-scrollbar { width: 5px; }
+        .list::-webkit-scrollbar-thumb { background: #d4a373; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="inner">
+            <h2>🌸 Lịch Hẹn Xinh 🌸</h2>
+            
+            <div class="form">
+                <label>Ngày hẹn *</label>
+                <input type="date" id="date">
+                
+                <label>Giờ hẹn *</label>
+                <input type="time" id="time">
+                
+                <label>Ghi chú (không bắt buộc)</label>
+                <input type="text" id="task" placeholder="Note ngắn thuiiii">
+                
+                <button class="btn-add" onclick="saveData()">✨ Lưu Lịch Hẹn</button>
+            </div>
+
+            <div class="list" id="appointmentList">
+                {% for item in appointments %}
+                <div class="item">
+                    <div class="item-info">
+                        <b>{{ item.date }}</b> | {{ item.time }}
+                        <span>{{ item.task if item.task else "(Trống)" }}</span>
+                    </div>
+                    <button class="btn-del" onclick="deleteItem('{{ item.id }}')">✕</button>
+                </div>
+                {% endfor %}
+            </div>
+
+            <a href="/note" class="back-link">↩️ Quay lại trang Ghi chú</a>
+        </div>
+    </div>
+
+    <script>
+        // Hàm lưu lịch hẹn
+        async function saveData() {
+            const dateInput = document.getElementById("date").value;
+            const timeInput = document.getElementById("time").value;
+            const taskInput = document.getElementById("task").value;
+
+            // Kiểm tra bắt buộc Ngày và Giờ
+            if (!dateInput || !timeInput) {
+                alert("Đẳng cấp chọn ngày và giờ nhé! 🌸");
+                return;
+            }
+
+            try {
+                const response = await fetch("/add_schedule", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        date: dateInput,
+                        time: timeInput,
+                        task: taskInput
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.reload(); // Lưu xong tải lại trang ngay
+                } else {
+                    alert("Hệ thống bận mất rồi, thử lại sau nha!");
+                }
+            } catch (error) {
+                console.error("Lỗi:", error);
+            }
+        }
+
+        // Hàm xóa lịch hẹn
+        async function deleteItem(id) {
+            if (confirm("Xóa lịch hẹn này nhaaa 🌸")) {
+                try {
+                    const response = await fetch("/delete_schedule/" + id, {
+                        method: "DELETE"
+                    });
+                    
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi xóa:", error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
